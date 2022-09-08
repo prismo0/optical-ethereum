@@ -12,7 +12,7 @@
       "berlinBlock": 0,
       "heavyhash": {}
     },
-    "difficulty": "1",
+   	"difficulty": "1000000",
     "gasLimit": "8000000",
     "alloc": {}
   }
