@@ -38,14 +38,20 @@ func New(ethash *ethash.Ethash) *Heavyhash {
 
 func heavyhash(in []byte, matrix *HeavyHashMatrix) common.Hash {
 	hash1 := sha3_256(in)
+
+
 	var x [RANK]byte
 
 	for i := 0; i < common.HashLength; i++ {
-		x[2*1] = hash1[i] >> 4
-		x[2*1+1] = hash1[i] & 0x0F
+		x[2*i] = hash1[i] >> 4
+		x[2*i+1] = hash1[i] & 0x0F
 	}
 
 	p := MatMult(matrix, x)
+
+	for i := 0; i < RANK; i++ {
+		p[i] >>= 10
+	}
 
 	var preout [common.HashLength]byte
 	for i := 0; i < common.HashLength; i++ {
