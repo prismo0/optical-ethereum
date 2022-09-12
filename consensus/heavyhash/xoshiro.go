@@ -13,10 +13,10 @@ type XorShiftGen struct {
 func InitXorShiftGen(seed common.Hash) *XorShiftGen {
 	var xs XorShiftGen
 
-	xs.state[0] = binary.BigEndian.Uint64(seed[0:8])
-	xs.state[1] = binary.BigEndian.Uint64(seed[8:16])
-	xs.state[2] = binary.BigEndian.Uint64(seed[16:24])
-	xs.state[3] = binary.BigEndian.Uint64(seed[24:32])
+	xs.state[0] = binary.LittleEndian.Uint64(seed[0:8])
+	xs.state[1] = binary.LittleEndian.Uint64(seed[8:16])
+	xs.state[2] = binary.LittleEndian.Uint64(seed[16:24])
+	xs.state[3] = binary.LittleEndian.Uint64(seed[24:32])
 
 	return &xs
 }
