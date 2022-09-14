@@ -263,6 +263,8 @@ func newHandler(config *handlerConfig) (*handler, error) {
 			log.Warn("Snap syncing, discarded propagated block", "number", blocks[0].Number(), "hash", blocks[0].Hash())
 			return 0, nil
 		}
+
+		// TODO: should this be discarded?
 		if h.merger.TDDReached() {
 			// The blocks from the p2p network is regarded as untrusted
 			// after the transition. In theory block gossip should be disabled

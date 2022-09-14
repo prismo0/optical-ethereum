@@ -557,6 +557,9 @@ func (api *ConsensusAPI) invalid(err error, latestValid *types.Header) beacon.Pa
 // user that something might be off with their consensus node.
 //
 // TODO(karalabe): Spin this goroutine down somehow
+
+// TODO(prismo): This is a routing for traking issues with validation client.
+// Remove it completely or adapt to the oPoW monitoring. For now just keep the trace.
 func (api *ConsensusAPI) heartbeat() {
 	// Sleep a bit on startup since there's obviously no beacon client yet
 	// attached, so no need to print scary warnings to the user.
@@ -593,9 +596,9 @@ func (api *ConsensusAPI) heartbeat() {
 				if time.Since(lastTransitionUpdate) > beaconUpdateExchangeTimeout {
 					if time.Since(offlineLogged) > beaconUpdateWarnFrequency {
 						if lastTransitionUpdate.IsZero() {
-							log.Warn("Post-merge network, but no beacon client seen. Please launch one to follow the chain!")
+							log.Trace("Post-merge network, but no beacon client seen. Please launch one to follow the chain!")
 						} else {
-							log.Warn("Previously seen beacon client is offline. Please ensure it is operational to follow the chain!")
+							log.Trace("Previously seen beacon client is offline. Please ensure it is operational to follow the chain!")
 						}
 						offlineLogged = time.Now()
 					}
@@ -603,9 +606,9 @@ func (api *ConsensusAPI) heartbeat() {
 				}
 				if time.Since(offlineLogged) > beaconUpdateWarnFrequency {
 					if lastForkchoiceUpdate.IsZero() && lastNewPayloadUpdate.IsZero() {
-						log.Warn("Beacon client online, but never received consensus updates. Please ensure your beacon client is operational to follow the chain!")
+						log.Trace("Beacon client online, but never received consensus updates. Please ensure your beacon client is operational to follow the chain!")
 					} else {
-						log.Warn("Beacon client online, but no consensus updates received in a while. Please fix your beacon client to follow the chain!")
+						log.Trace("Beacon client online, but no consensus updates received in a while. Please fix your beacon client to follow the chain!")
 					}
 					offlineLogged = time.Now()
 				}
@@ -662,9 +665,9 @@ func (api *ConsensusAPI) heartbeat() {
 						}
 					}
 					if eta == 0 {
-						log.Warn(message)
+						log.Trace(message)
 					} else {
-						log.Warn(message, "eta", common.PrettyAge(time.Now().Add(-eta))) // weird hack, but duration formatted doesn't handle days
+						log.Trace(message, "eta", common.PrettyAge(time.Now().Add(-eta))) // weird hack, but duration formatted doesn't handle days
 					}
 					offlineLogged = time.Now()
 				}

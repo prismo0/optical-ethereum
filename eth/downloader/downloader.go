@@ -360,6 +360,9 @@ func (d *Downloader) LegacySync(id string, head common.Hash, td, ttd *big.Int, m
 // synchronise will select the peer and use it for synchronising. If an empty string is given
 // it will use the best peer possible and synchronize if its TD is higher than our own. If any of the
 // checks fail an error will be returned. This method is synchronous
+
+// BEACON_SYNC
+// TODO: examine the behaviour
 func (d *Downloader) synchronise(id string, hash common.Hash, td, ttd *big.Int, mode SyncMode, beaconMode bool, beaconPing chan struct{}) error {
 	// The beacon header syncer is async. It will start this synchronization and
 	// will continue doing other tasks. However, if synchronization needs to be
@@ -446,6 +449,8 @@ func (d *Downloader) getMode() SyncMode {
 // syncWithPeer starts a block synchronization based on the hash chain from the
 // specified peer and head hash.
 func (d *Downloader) syncWithPeer(p *peerConnection, hash common.Hash, td, ttd *big.Int, beaconMode bool) (err error) {
+	// TODO: check where the beaconMode is comming from
+	// check how it affects the behaviour of the synchronization process
 	d.mux.Post(StartEvent{})
 	defer func() {
 		// reset on error
@@ -610,7 +615,7 @@ func (d *Downloader) syncWithPeer(p *peerConnection, hash common.Hash, td, ttd *
 		headerFetcher, // Headers are always retrieved
 		func() error { return d.fetchBodies(origin+1, beaconMode) },   // Bodies are retrieved during normal and snap sync
 		func() error { return d.fetchReceipts(origin+1, beaconMode) }, // Receipts are retrieved during snap sync
-		func() error { return d.processHeaders(origin+1, td, ttd, beaconMode) },
+		func() error { return d.processHeaders(origin+1, td, ttd, beaconMode, true) },
 	}
 	if mode == SnapSync {
 		d.pivotLock.Lock()
@@ -619,7 +624,8 @@ func (d *Downloader) syncWithPeer(p *peerConnection, hash common.Hash, td, ttd *
 
 		fetchers = append(fetchers, func() error { return d.processSnapSyncContent() })
 	} else if mode == FullSync {
-		fetchers = append(fetchers, func() error { return d.processFullSyncContent(ttd, beaconMode) })
+		// Adds explicit photnic anticipation parameter
+		fetchers = append(fetchers, func() error { return d.processFullSyncContent(ttd, beaconMode, true) })
 	}
 	return d.spawnSync(fetchers)
 }
@@ -1249,7 +1255,7 @@ func (d *Downloader) fetchReceipts(from uint64, beaconMode bool) error {
 // processHeaders takes batches of retrieved headers from an input channel and
 // keeps processing and scheduling them into the header chain and downloader's
 // queue until the stream ends or a failure occurs.
-func (d *Downloader) processHeaders(origin uint64, td, ttd *big.Int, beaconMode bool) error {
+func (d *Downloader) processHeaders(origin uint64, td, ttd *big.Int, beaconMode bool, photnicAnticipation bool) error {
 	// Keep a count of uncertain headers to roll back
 	var (
 		rollback    uint64 // Zero means no rollback (fine as you can't unroll the genesis)
@@ -1379,7 +1385,7 @@ func (d *Downloader) processHeaders(origin uint64, td, ttd *big.Int, beaconMode 
 						rejected []*types.Header
 						td       *big.Int
 					)
-					if !beaconMode && ttd != nil {
+					if !beaconMode && ttd != nil && !photnicAnticipation {
 						td = d.blockchain.GetTd(chunkHeaders[0].ParentHash, chunkHeaders[0].Number.Uint64()-1)
 						if td == nil {
 							// This should never really happen, but handle gracefully for now
@@ -1473,7 +1479,7 @@ func (d *Downloader) processHeaders(origin uint64, td, ttd *big.Int, beaconMode 
 }
 
 // processFullSyncContent takes fetch results from the queue and imports them into the chain.
-func (d *Downloader) processFullSyncContent(ttd *big.Int, beaconMode bool) error {
+func (d *Downloader) processFullSyncContent(ttd *big.Int, beaconMode bool, photonicAnticipation bool) error {
 	for {
 		results := d.queue.Results(true)
 		if len(results) == 0 {
@@ -1489,7 +1495,7 @@ func (d *Downloader) processFullSyncContent(ttd *big.Int, beaconMode bool) error
 			rejected []*fetchResult
 			td       *big.Int
 		)
-		if !beaconMode && ttd != nil {
+		if !beaconMode && ttd != nil && !photonicAnticipation {
 			td = d.blockchain.GetTd(results[0].Header.ParentHash, results[0].Header.Number.Uint64()-1)
 			if td == nil {
 				// This should never really happen, but handle gracefully for now
