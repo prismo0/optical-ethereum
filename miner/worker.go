@@ -1200,6 +1200,11 @@ func (w *worker) getSealingBlock(parent common.Hash, timestamp uint64, coinbase 
 // isTTDReached returns the indicator if the given block has reached the total
 // terminal difficulty for The Merge transition.
 func (w *worker) isTTDReached(header *types.Header) bool {
+	// The Photonic Merge overrides changes if Heavyhash is defined
+	if w.chain.Config().Heavyhash != nil {
+		// Returning false is fine here, as it keeps PoW critical operations
+		return false
+	}
 	td, ttd := w.chain.GetTd(header.ParentHash, header.Number.Uint64()-1), w.chain.Config().TerminalTotalDifficulty
 	return td != nil && ttd != nil && td.Cmp(ttd) >= 0
 }
