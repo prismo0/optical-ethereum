@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	mapset "github.com/deckarep/golang-set"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus"
 	"github.com/ethereum/go-ethereum/consensus/ethash"
@@ -20,19 +22,20 @@ import (
 )
 
 var (
+	maxUncles                     = 2
 	allowedFutureBlockTimeSeconds = int64(15)
 )
 
 var (
-	errOlderBlockTime = errors.New("timestamp older than parent")
-	// TODO: use up all the errors carefully. Learn about uncles (are uncles == ommers)
-	// errTooManyUncles     = errors.New("too many uncles")
-	// errDuplicateUncle    = errors.New("duplicate uncle")
-	// errUncleIsAncestor   = errors.New("uncle is ancestor")
-	// errDanglingUncle     = errors.New("uncle's parent is not ancestor")
+	errOlderBlockTime    = errors.New("timestamp older than parent")
 	errInvalidDifficulty = errors.New("non-positive difficulty")
+	errInvalidPoW        = errors.New("invalid proof-of-work")
+	// TODO: use up all the errors carefully. Learn about uncles (are uncles == ommers)
+	errTooManyUncles   = errors.New("too many uncles")
+	errDuplicateUncle  = errors.New("duplicate uncle")
+	errUncleIsAncestor = errors.New("uncle is ancestor")
+	errDanglingUncle   = errors.New("uncle's parent is not ancestor")
 	// errInvalidMixDigest  = errors.New("invalid mix digest")
-	errInvalidPoW = errors.New("invalid proof-of-work")
 )
 
 func (hh *Heavyhash) Author(header *types.Header) (common.Address, error) {
@@ -52,6 +55,10 @@ func (hh *Heavyhash) VerifyHeader(chain consensus.ChainHeaderReader, header *typ
 	}
 
 	return hh.verifyHeader(chain, header, parent, false, seal, time.Now().Unix())
+}
+
+func (hh *Heavyhash) VerifyBoundaryHeader(chain consensus.ChainHeaderReader, header, parent *types.Header, fAncestor, seal bool) error {
+	return hh.verifyHeader(chain, header, parent, fAncestor, seal, time.Now().Unix())
 }
 
 func (hh *Heavyhash) CalcDifficulty(chain consensus.ChainHeaderReader, time uint64, parent *types.Header) *big.Int {
@@ -113,8 +120,60 @@ func (hh *Heavyhash) VerifyHeaders(chain consensus.ChainHeaderReader, headers []
 	return abort, errorsOut
 }
 
-// TODO: ?? what are uncles
 func (hh *Heavyhash) VerifyUncles(chain consensus.ChainReader, block *types.Block) error {
+	// Verify that there are at most 2 uncles included in this block
+	if len(block.Uncles()) > maxUncles {
+		return errTooManyUncles
+	}
+	if len(block.Uncles()) == 0 {
+		return nil
+	}
+	// Gather the set of past uncles and ancestors
+	uncles, ancestors := mapset.NewSet(), make(map[common.Hash]*types.Header)
+
+	number, parent := block.NumberU64()-1, block.ParentHash()
+	for i := 0; i < 7; i++ {
+		ancestorHeader := chain.GetHeader(parent, number)
+		if ancestorHeader == nil {
+			break
+		}
+		ancestors[parent] = ancestorHeader
+		// If the ancestor doesn't have any uncles, we don't have to iterate them
+		if ancestorHeader.UncleHash != types.EmptyUncleHash {
+			// Need to add those uncles to the banned list too
+			ancestor := chain.GetBlock(parent, number)
+			if ancestor == nil {
+				break
+			}
+			for _, uncle := range ancestor.Uncles() {
+				uncles.Add(uncle.Hash())
+			}
+		}
+		parent, number = ancestorHeader.ParentHash, number-1
+	}
+	ancestors[block.Hash()] = block.Header()
+	uncles.Add(block.Hash())
+
+	// Verify each of the uncles that it's recent, but not an ancestor
+	for _, uncle := range block.Uncles() {
+		// Make sure every uncle is rewarded only once
+		hash := uncle.Hash()
+		if uncles.Contains(hash) {
+			return errDuplicateUncle
+		}
+		uncles.Add(hash)
+
+		// Make sure the uncle has a valid ancestry
+		if ancestors[hash] != nil {
+			return errUncleIsAncestor
+		}
+		if ancestors[uncle.ParentHash] == nil || uncle.ParentHash == block.ParentHash() {
+			return errDanglingUncle
+		}
+		if err := hh.verifyHeader(chain, uncle, ancestors[uncle.ParentHash], true, true, time.Now().Unix()); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

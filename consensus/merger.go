@@ -43,6 +43,7 @@ type Merger struct {
 }
 
 // NewMerger creates a new Merger which stores its transition status in the provided db.
+// TODO: most likely all the Merger functionality should be turned off
 func NewMerger(db ethdb.KeyValueStore) *Merger {
 	var status transitionStatus
 	blob := rawdb.ReadTransitionStatus(db)
@@ -59,6 +60,7 @@ func NewMerger(db ethdb.KeyValueStore) *Merger {
 
 // ReachTTD is called whenever the first NewHead message received
 // from the consensus-layer.
+// TODO: turn-off relaying messages from the consensus layer
 func (m *Merger) ReachTTD() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -103,6 +105,7 @@ func (m *Merger) TDDReached() bool {
 
 // PoSFinalized reports whether the chain has entered the PoS stage.
 func (m *Merger) PoSFinalized() bool {
+	// TODO: Should probably always return false
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 

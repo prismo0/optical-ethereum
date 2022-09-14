@@ -120,6 +120,10 @@ func (ethash *Ethash) VerifyHeader(chain consensus.ChainHeaderReader, header *ty
 	return ethash.verifyHeader(chain, header, parent, false, seal, time.Now().Unix())
 }
 
+func (ethash *Ethash) VerifyBoundaryHeader(chain consensus.ChainHeaderReader, header, parent *types.Header, fAncestor, seal bool) error {
+	return ethash.verifyHeader(chain, header, parent, fAncestor, seal, time.Now().Unix())
+}
+
 // VerifyHeaders is similar to VerifyHeader, but verifies a batch of headers
 // concurrently. The method returns a quit channel to abort the operations and
 // a results channel to retrieve the async verifications.
