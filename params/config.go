@@ -264,6 +264,25 @@ var (
 		Threshold: 2,
 	}
 
+	// The following is the specification of the network based on the heavyhash
+	HeavyhashMainChainConfig = &ChainConfig{
+		ChainID:             big.NewInt(151),
+		HomesteadBlock:      big.NewInt(0),
+		DAOForkBlock:        nil,
+		DAOForkSupport:      true,
+		EIP150Block:         big.NewInt(0),
+		EIP155Block:         big.NewInt(0),
+		EIP158Block:         big.NewInt(0),
+		ByzantiumBlock:      big.NewInt(0),
+		ConstantinopleBlock: big.NewInt(0),
+		PetersburgBlock:     big.NewInt(0),
+		IstanbulBlock:       big.NewInt(0),
+		MuirGlacierBlock:    big.NewInt(0),
+		BerlinBlock:         big.NewInt(0),
+		LondonBlock:         big.NewInt(0),
+		Heavyhash:           new(HeavyhashConfig),
+	}
+
 	// AllEthashProtocolChanges contains every protocol change (EIPs) introduced
 	// and accepted by the Ethereum core developers into the Ethash consensus.
 	//
@@ -283,11 +302,12 @@ var (
 
 // NetworkNames are user friendly names to use in the chain spec banner.
 var NetworkNames = map[string]string{
-	MainnetChainConfig.ChainID.String(): "mainnet",
-	RopstenChainConfig.ChainID.String(): "ropsten",
-	RinkebyChainConfig.ChainID.String(): "rinkeby",
-	GoerliChainConfig.ChainID.String():  "goerli",
-	SepoliaChainConfig.ChainID.String(): "sepolia",
+	MainnetChainConfig.ChainID.String():       "mainnet",
+	RopstenChainConfig.ChainID.String():       "ropsten",
+	RinkebyChainConfig.ChainID.String():       "rinkeby",
+	GoerliChainConfig.ChainID.String():        "goerli",
+	SepoliaChainConfig.ChainID.String():       "sepolia",
+	HeavyhashMainChainConfig.ChainID.String(): "opow-mainnet",
 }
 
 // TrustedCheckpoint represents a set of post-processed trie roots (CHT and
@@ -439,6 +459,8 @@ func (c *ChainConfig) String() string {
 		} else {
 			banner += "Consensus: Beacon (proof-of-stake), merged from Clique (proof-of-authority)\n"
 		}
+	case c.Heavyhash != nil:
+		banner += "Consensus: Heavyhash (optical-proof-of-work)\n"
 	default:
 		banner += "Consensus: unknown\n"
 	}
@@ -447,7 +469,6 @@ func (c *ChainConfig) String() string {
 	// Create a list of forks with a short description of them. Forks that only
 	// makes sense for mainnet should be optional at printing to avoid bloating
 	// the output for testnets and private networks.
-	banner += "Pre-Merge hard forks:\n"
 	banner += fmt.Sprintf(" - Homestead:                   %-8v (https://github.com/ethereum/execution-specs/blob/master/network-upgrades/mainnet-upgrades/homestead.md)\n", c.HomesteadBlock)
 	if c.DAOForkBlock != nil {
 		banner += fmt.Sprintf(" - DAO Fork:                    %-8v (https://github.com/ethereum/execution-specs/blob/master/network-upgrades/mainnet-upgrades/dao-fork.md)\n", c.DAOForkBlock)
@@ -479,7 +500,7 @@ func (c *ChainConfig) String() string {
 	banner += "\n"
 
 	// Add a special section for the merge as it's non-obvious
-	if c.TerminalTotalDifficulty == nil {
+	if c.TerminalTotalDifficulty == nil && c.Heavyhash == nil {
 		banner += "The Merge is not yet available for this network!\n"
 		banner += " - Hard-fork specification: https://github.com/ethereum/execution-specs/blob/master/network-upgrades/mainnet-upgrades/paris.md"
 	} else {

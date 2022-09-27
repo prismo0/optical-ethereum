@@ -249,7 +249,6 @@ func CreateConsensusEngine(stack *node.Node, chainConfig *params.ChainConfig, co
 	}
 
 	if chainConfig.Heavyhash != nil {
-		log.Info("Using HeavyHash")
 		return beacon.New(heavyhash.New(engine.(*ethash.Ethash)))
 	}
 
