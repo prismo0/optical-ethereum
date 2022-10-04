@@ -10,6 +10,7 @@
       "petersburgBlock": 0,
       "istanbulBlock": 0,
       "berlinBlock": 0,
+      "opowBlock": 0,
       "heavyhash": {}
     },
    	"difficulty": "1000000",
